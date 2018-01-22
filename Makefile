@@ -19,7 +19,7 @@ $(BUILD)/saturni: $(patsubst %,$(BUILD)/%.o,main music lua_runner shader_runner)
 	$(CC) $^ $(LFLAGS) -o $(BUILD)/saturni
 	cp lib/* $(BUILD)/
 
-$(BUILD)/%.o: src/%.cpp Makefile $(BUILD)
+$(BUILD)/%.o: src/%.cpp Makefile | $(BUILD)
 	$(CC) $(CFLAGS) $< -c -o $@
 
 $(BUILD)/main.o: src/main.cpp src/music.h src/filewatch.h src/lua_runner.h src/shader_runner.h
