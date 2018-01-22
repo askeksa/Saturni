@@ -5,13 +5,20 @@
 #include <vector>
 
 class ShaderRunner {
+	int width;
+	int height;
+
 	GLuint quad_vertex_buffer;
-	GLuint program;
-	GLuint xy_loc;
+	GLuint render_tex;
+	GLuint framebuf;
+	GLuint scale_program = 0;
+	GLuint scale_xy_loc;
+	GLuint user_program = 0;
+	GLuint user_xy_loc;
 
 	std::vector<char> uniform_name;
 public:
-	ShaderRunner();
+	ShaderRunner(int width, int height);
 	~ShaderRunner();
 
 	void load(const char *filename);

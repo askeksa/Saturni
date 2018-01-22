@@ -47,24 +47,6 @@ GLuint makeProgram(const char *vsource, const char *psource) {
 	return program;
 }
 
-ShaderRunner::ShaderRunner() {
-	// Make quad vertex buffer
-	const float corners[3][2] = {
-		{ 0.0, 0.0 },
-		{ 2.0, 0.0 },
-		{ 0.0, 2.0 },
-	};
-	glGenBuffers(1, &quad_vertex_buffer);
-	glBindBuffer(GL_ARRAY_BUFFER, quad_vertex_buffer);
-	glBufferData(GL_ARRAY_BUFFER, 3 * sizeof(QuadVertex), &corners[0], GL_STATIC_DRAW);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-}
-
-ShaderRunner::~ShaderRunner() {
-	glFinish();
-	glDeleteBuffers(1, &quad_vertex_buffer);
-}
-
 static const char *quad_vshader = R"--(
 #version 150
 
@@ -78,6 +60,63 @@ void main() {
 }
 
 )--";
+
+static const char *scale_pshader = R"--(
+#version 150
+
+varying vec2 uv;
+
+uniform sampler2D tex;
+
+void main() {
+	gl_FragColor = texture2D(tex, uv);
+}
+
+)--";
+
+ShaderRunner::ShaderRunner(int width, int height) : width(width), height(height) {
+	// Make quad vertex buffer
+	const float corners[3][2] = {
+		{ 0.0, 0.0 },
+		{ 2.0, 0.0 },
+		{ 0.0, 2.0 },
+	};
+	glGenBuffers(1, &quad_vertex_buffer);
+	glBindBuffer(GL_ARRAY_BUFFER, quad_vertex_buffer);
+	glBufferData(GL_ARRAY_BUFFER, 3 * sizeof(QuadVertex), &corners[0], GL_STATIC_DRAW);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+	// Make render texture
+	glGenTextures(1, &render_tex);
+	glBindTexture(GL_TEXTURE_2D, render_tex);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glBindTexture(GL_TEXTURE_2D, 0);
+
+	// Make frame buffer
+	glGenFramebuffers(1, &framebuf);
+	glBindFramebuffer(GL_FRAMEBUFFER, framebuf);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, render_tex, 0);
+	GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+	if (status != GL_FRAMEBUFFER_COMPLETE) {
+		printf("Framebuffer not complete (%d)\n", status);
+		fflush(stdout);
+	}
+
+	// Compile scale program
+	scale_program = makeProgram(quad_vshader, scale_pshader);
+	scale_xy_loc = glGetAttribLocation(scale_program, "xy");
+}
+
+ShaderRunner::~ShaderRunner() {
+	glFinish();
+	glDeleteProgram(scale_program);
+	glDeleteProgram(user_program);
+	glDeleteFramebuffers(1, &framebuf);
+	glDeleteTextures(1, &render_tex);
+	glDeleteBuffers(1, &quad_vertex_buffer);
+}
 
 void ShaderRunner::load(const char *filename) {
 	FILE *fp = fopen(filename, "rb");
@@ -94,36 +133,47 @@ void ShaderRunner::load(const char *filename) {
 	shader_text[size] = '\0';
 	fclose(fp);
 
-	program = makeProgram(quad_vshader, shader_text);
+	glDeleteProgram(user_program);
+	user_program = makeProgram(quad_vshader, shader_text);
 	free(shader_text);
-	xy_loc = glGetAttribLocation(program, "xy");
+	user_xy_loc = glGetAttribLocation(user_program, "xy");
 }
 
 void ShaderRunner::render(LuaRunner& lua) {
-	// Set up vertex streams
-	glBindBuffer(GL_ARRAY_BUFFER, quad_vertex_buffer);
-	glVertexAttribPointer(xy_loc, 2, GL_FLOAT, GL_FALSE, sizeof(QuadVertex), &((QuadVertex *)0)->x);
-	glEnableVertexAttribArray(xy_loc);
+	// Save target state
+	GLuint target;
+	glGetIntegerv(GL_FRAMEBUFFER_BINDING, (GLint *) &target);
+	GLint vp[4];
+	glGetIntegerv(GL_VIEWPORT, vp);
 
-	// Set program
-	glUseProgram(program);
+	// Render to FBO
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuf);
+	glViewport(0, 0, width, height);
+
+	// Set user program
+	glUseProgram(user_program);
+
+	// Set up vertex streams for user shader
+	glBindBuffer(GL_ARRAY_BUFFER, quad_vertex_buffer);
+	glVertexAttribPointer(user_xy_loc, 2, GL_FLOAT, GL_FALSE, sizeof(QuadVertex), &((QuadVertex *)0)->x);
+	glEnableVertexAttribArray(user_xy_loc);
 
 	// Set uniforms
 	GLint uniform_name_length;
-	glGetProgramiv(program, GL_ACTIVE_UNIFORM_MAX_LENGTH, &uniform_name_length);
+	glGetProgramiv(user_program, GL_ACTIVE_UNIFORM_MAX_LENGTH, &uniform_name_length);
 	if (uniform_name.size() < uniform_name_length) {
 		uniform_name.resize(uniform_name_length);
 	}
 	char *name = &uniform_name[0];
 	GLint n_uniforms;
-	glGetProgramiv(program, GL_ACTIVE_UNIFORMS, &n_uniforms);
+	glGetProgramiv(user_program, GL_ACTIVE_UNIFORMS, &n_uniforms);
 	for (GLint i = 0; i < n_uniforms; i++) {
 		GLint size;
 		GLenum type;
 		float value[4];
-		glGetActiveUniform(program, i, uniform_name.size(), nullptr,
+		glGetActiveUniform(user_program, i, uniform_name.size(), nullptr,
 			&size, &type, name);
-		GLint loc = glGetUniformLocation(program, name);
+		GLint loc = glGetUniformLocation(user_program, name);
 		bool array = false;
 		char *bracket = strstr(name, "[");
 		if (bracket != nullptr) {
@@ -159,6 +209,33 @@ void ShaderRunner::render(LuaRunner& lua) {
 	glDrawArrays(GL_TRIANGLES, 0, 3);
 
 	// Cleanup
-	glDisableVertexAttribArray(xy_loc);
+	glDisableVertexAttribArray(user_xy_loc);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+
+	// Render to original render target
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, target);
+	glViewport(vp[0], vp[1], vp[2], vp[3]);
+
+	// Set scale program
+	glUseProgram(scale_program);
+
+	// Set up vertex streams for scale shader
+	glBindBuffer(GL_ARRAY_BUFFER, quad_vertex_buffer);
+	glVertexAttribPointer(scale_xy_loc, 2, GL_FLOAT, GL_FALSE, sizeof(QuadVertex), &((QuadVertex *)0)->x);
+	glEnableVertexAttribArray(scale_xy_loc);
+
+	// Set texture
+	GLint tex_loc = glGetUniformLocation(scale_program, "tex");
+	glUniform1f(tex_loc, 0);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, render_tex);
+
+	// Draw
+	glDrawArrays(GL_TRIANGLES, 0, 6);
+
+	// Cleanup
+	glBindTexture(GL_TEXTURE_2D, 0);
+	glDisableVertexAttribArray(scale_xy_loc);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 }

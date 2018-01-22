@@ -32,9 +32,14 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
 }
 
 int main(int argc, char *argv[]) {
-	if (argc != 2) {
-		printf("Usage: saturni <lua file>\n");
+	if (argc < 2) {
+		printf("Usage: saturni <lua file> [<scale>]\n");
 		exit(1);
+	}
+
+	int scale = 1;
+	if (argc > 2) {
+		scale = atoi(argv[2]);
 	}
 
 	// Load code
@@ -70,7 +75,7 @@ int main(int argc, char *argv[]) {
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
 	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
-	GLFWwindow *window = glfwCreateWindow(width, height, title, nullptr, nullptr);
+	GLFWwindow *window = glfwCreateWindow(width * scale, height * scale, title, nullptr, nullptr);
 	glfwMakeContextCurrent(window);
 	glewExperimental = GL_TRUE;
 	glewInit();
@@ -78,7 +83,7 @@ int main(int argc, char *argv[]) {
 	glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
 
 	// Shader runner and file
-	ShaderRunner shader;
+	ShaderRunner shader(width, height);
 	FileWatch shader_file("");
 
 	// Set up key callback
