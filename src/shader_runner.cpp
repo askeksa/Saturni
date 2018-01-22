@@ -55,7 +55,7 @@ attribute vec2 xy;
 varying vec2 uv;
 
 void main() {
-	gl_Position = vec4(xy.x * 2.0 - 1.0, 1.0 - xy.y * 2.0, 0.0, 1.0);
+	gl_Position = vec4(xy * 2.0 - vec2(1.0), 0.0, 1.0);
 	uv = xy;
 }
 
@@ -69,7 +69,7 @@ varying vec2 uv;
 uniform sampler2D tex;
 
 void main() {
-	gl_FragColor = texture2D(tex, uv);
+	gl_FragColor = texture2D(tex, vec2(uv.x, 1.0 - uv.y));
 }
 
 )--";
