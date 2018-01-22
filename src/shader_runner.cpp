@@ -6,6 +6,7 @@
 #include "shader_runner.h"
 
 #include <cstdlib>
+#include <cstring>
 #include <vector>
 
 
@@ -113,16 +114,45 @@ void ShaderRunner::render(LuaRunner& lua) {
 	if (uniform_name.size() < uniform_name_length) {
 		uniform_name.resize(uniform_name_length);
 	}
+	char *name = &uniform_name[0];
 	GLint n_uniforms;
 	glGetProgramiv(program, GL_ACTIVE_UNIFORMS, &n_uniforms);
 	for (GLint i = 0; i < n_uniforms; i++) {
 		GLint size;
 		GLenum type;
+		float value[4];
 		glGetActiveUniform(program, i, uniform_name.size(), nullptr,
-			&size, &type, &uniform_name[0]);
-		double value = lua.get_number(&uniform_name[0]);
-		GLint loc = glGetUniformLocation(program, &uniform_name[0]);
-		glUniform1f(loc, value);
+			&size, &type, name);
+		GLint loc = glGetUniformLocation(program, name);
+		bool array = false;
+		char *bracket = strstr(name, "[");
+		if (bracket != nullptr) {
+			array = true;
+			*bracket = '\0';
+		}
+		for (int i = 0; i < size; i++) {
+			int index = array ? i : -1;
+			switch (type) {
+
+#define TYPECASE(_gltype, _num) \
+			case _gltype: \
+				if (!lua.get_float_vec(name, index, _num, value)) { \
+					std::fill(&value[0], &value[_num], 0.0f); \
+				} \
+				glUniform##_num##fv(loc + i, 1, value); \
+				break;
+
+			TYPECASE(GL_FLOAT, 1)
+			TYPECASE(GL_FLOAT_VEC2, 2)
+			TYPECASE(GL_FLOAT_VEC3, 3)
+			TYPECASE(GL_FLOAT_VEC4, 4)
+#undef TYPECASE
+
+			default:
+				// Unsupported uniform type
+				break;
+			}
+		}
 	}
 
 	// Draw

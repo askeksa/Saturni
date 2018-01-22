@@ -21,4 +21,5 @@ public:
 	void run_frame(double time);
 	double get_number(const char *name);
 	const char *get_string(const char *name);
+	bool get_float_vec(const char *name, int index, int size, float *value);
 };
