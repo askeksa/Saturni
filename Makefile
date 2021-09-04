@@ -1,12 +1,17 @@
 
-EXTERNAL := ../Andres
 BUILD = build
 
-CC := i686-w64-mingw32-g++
-INCLUDES := -I$(EXTERNAL)/glfw-3.0.4.bin.WIN32/include -I$(EXTERNAL)/glew-1.10.0/include -I$(EXTERNAL)/portaudio/include -I$(EXTERNAL)/LuaJIT-2.0.4/src
-LIBRARIES := $(EXTERNAL)/glew-1.10.0/lib/Release/Win32/glew32s.lib -L$(EXTERNAL)/glfw-3.0.4.bin.WIN32/lib-mingw $(EXTERNAL)/portaudio/mingw32/usr/local/lib/libportaudio-2.dll -L$(EXTERNAL)/LuaJIT-2.0.5/src
+UNAME := $(shell uname)
+ifeq ($(UNAME), Linux)
+LIBRARIES := -lluajit-5.1 -lglfw -lGL -lGLEW -lportaudio
+else
+INCLUDES := -I/mingw64/include
+LIBRARIES := -L/mingw64/lib -lluajit-5.1 -lopengl32 -lglfw3 -lglew32 -lportaudio
+endif
+
+CC := g++
 CFLAGS := $(INCLUDES) -Wno-write-strings -std=c++11
-LFLAGS := $(LIBRARIES) -lluajit -lglfw3 -lopengl32 -luser32 -lgdi32 -static-libgcc -static-libstdc++
+LFLAGS := $(LIBRARIES)
 
 ifeq ($(DEBUG),yes)
 CFLAGS += -g

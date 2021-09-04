@@ -1,6 +1,6 @@
 #pragma once
 
-#include <lua.hpp>
+#include <luajit-2.1/lua.hpp>
 
 class LuaRunner {
 	lua_State *L;

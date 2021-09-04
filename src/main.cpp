@@ -1,4 +1,5 @@
 
+#define CALLBACK __stdcall
 #define GLEW_BUILD GLEW_STATIC
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
@@ -6,6 +7,8 @@
 #include <queue>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
+#include <thread>
 
 #include "music.h"
 #include "filewatch.h"
@@ -204,11 +207,11 @@ int main(int argc, char *argv[]) {
 		if (playing) {
 			int prev_frame = frame;
 			do {
-				usleep(1000);
+				std::this_thread::sleep_for(std::chrono::milliseconds(1));
 				frame = (int)(player.get_time() * framerate);
 			} while (frame == prev_frame);
 		} else {
-			usleep(100000);
+			std::this_thread::sleep_for(std::chrono::milliseconds(100));
 		}
 	}
 
