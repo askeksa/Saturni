@@ -57,6 +57,7 @@ varying vec2 uv;
 
 void main() {
 	gl_Position = vec4(xy * 2.0 - vec2(1.0), 0.0, 1.0);
+    gl_Position.y = gl_Position.y * -1.0; // flip vertical right way around
 	uv = xy;
 }
 

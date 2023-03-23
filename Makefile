@@ -22,7 +22,6 @@ endif
 
 $(BUILD)/saturni: $(patsubst %,$(BUILD)/%.o,main music lua_runner shader_runner)
 	$(CC) $^ $(LFLAGS) -o $(BUILD)/saturni
-	cp lib/* $(BUILD)/
 
 $(BUILD)/%.o: src/%.cpp Makefile | $(BUILD)
 	$(CC) $(CFLAGS) $< -c -o $@
