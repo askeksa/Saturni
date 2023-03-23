@@ -32,3 +32,21 @@ end
 ```
 
 run using: ` ./build/saturni example.lua`
+
+
+## Playback controls
+
+### Keyboard
+
+`SPACE`: Play/Pause
+`BACKSPACE`: Jump back to last playback started frame
+`LEFT`: Back 1 frame
+`RIGHT`: Forward 1 frame
+`PAGE UP`: Back 50 frames
+`PAGE DOWN`: Forward 50 frames
+`HOME` : Jump to start
+
+
+### Mouse 
+
+X position: scrub to relative position in wave file (eg mouse in far left is start of audio file)
