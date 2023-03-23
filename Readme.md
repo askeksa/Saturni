@@ -17,7 +17,7 @@ Minimal lua file
 title = "Minimal Test"
 
 music = "test.wav"
-shader = "testshader.glsl"
+shader = "testshader.frag"
 
 width = 640
 height = 480

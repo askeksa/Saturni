@@ -2,7 +2,7 @@ title = "Minimal Test"
 
 framerate = 60
 music = "test.wav"
-shader = "helloworld.glsl"
+shader = "helloworld.frag"
 
 width = 640
 height = 480
