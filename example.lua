@@ -20,7 +20,7 @@ ElapsedTime = 0 -- elapsed time in sec, note: can go backwards!
 
 function frame(t)
   if Frames % 30 == 0 then
-    print("time(s):"..t)
+    -- print("time(s):"..t)
   end
   ElapsedTime = t
   Frames = Frames + 1
