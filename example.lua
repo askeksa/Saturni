@@ -10,7 +10,8 @@ height = 480
 -- a global getter for `u_time` which is what we have as a uniform
 -- in our shader glsl to get the shader playback time in sec 
 setmetatable(_G, {__index = function (table, key)
-   if key == "u_time" then return (i / 60)  end
+   if key == "u_time" then return (i / 60) end
+   if key == "u_resolution" then return {x = width, y = height} end
   end
 })
 
